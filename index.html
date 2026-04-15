@@ -55,6 +55,9 @@
     .filter-button:hover { background:#e2e8f0; }
     .chart-block { width: 100%; min-height: 360px; height: 360px; }
     .chart-block canvas { display: block; width: 100% !important; height: 100% !important; }
+    .chart-label-list { display:grid; gap:6px; margin-top:12px; color:#334155; font-size:0.95rem; }
+    .chart-label-list .chart-list-item { display:flex; justify-content:space-between; gap:12px; padding:10px 12px; border-radius:14px; background:#f8fafc; border:1px solid #e2e8f0; }
+    .chart-label-list .chart-list-item span:first-child { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .chart-block.small { height: 300px; }
     @media(max-width: 980px) { .charts-grid { grid-template-columns:1fr; } .mini-grid { grid-template-columns:1fr; } .stats-grid { grid-template-columns: repeat(2, 1fr); } .filter-row { flex-direction: column; } .page { padding: 16px 12px 30px; } }
   </style>
@@ -94,8 +97,8 @@
             <div class="panel"><div class="panel-title"><h3>Company size</h3></div><div id="sizeCategoryButtons" class="button-group"></div><div class="chart-block"><canvas id="sizeChart"></canvas></div></div>
           </div>
           <div class="mini-grid">
-            <div class="panel"><div class="panel-title"><h3>Top industries</h3></div><div class="chart-block"><canvas id="industryChart"></canvas></div></div>
-            <div class="panel"><div class="panel-title"><h3>Top countries</h3></div><div class="chart-block"><canvas id="countryChart"></canvas></div></div>
+            <div class="panel"><div class="panel-title"><h3>Top industries</h3></div><div class="chart-block"><canvas id="industryChart"></canvas></div><div id="industryLabels" class="chart-label-list"></div></div>
+            <div class="panel"><div class="panel-title"><h3>Top countries</h3></div><div class="chart-block"><canvas id="countryChart"></canvas></div><div id="countryLabels" class="chart-label-list"></div></div>
           </div>
         </div>
       </div>
@@ -2937,6 +2940,22 @@
       tbody.appendChild(tr);
     });
   }
+  function renderTextList(containerId, data, limit=8) {
+    const container=document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML='';
+    topEntries(data, limit).forEach(([label,count])=>{
+      const item=document.createElement('div');
+      item.className='chart-list-item';
+      const labelEl=document.createElement('span');
+      labelEl.textContent=label || 'Unknown';
+      const countEl=document.createElement('span');
+      countEl.textContent=count;
+      item.appendChild(labelEl);
+      item.appendChild(countEl);
+      container.appendChild(item);
+    });
+  }
   function updateBadge() {
     const parts=[];
     ['countryFilter','industryFilter','inboxFilter','jobFilter'].forEach(id=>{
@@ -3043,6 +3062,8 @@
     });
     renderSizeButtons(sizeCounts);
     renderJobCategoryButtons(jobCounts);
+    renderTextList('industryLabels', industryCounts, 8);
+    renderTextList('countryLabels', countryCounts, 8);
   }
   function filterRecords() {
     let filtered=rawData;
