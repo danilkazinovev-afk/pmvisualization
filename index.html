@@ -2951,11 +2951,11 @@
       tbody.appendChild(tr);
     });
   }
-  function renderTextList(containerId, data) {
+  function renderTextList(containerId, data, limit=10) {
     const container=document.getElementById(containerId);
     if (!container) return;
     container.innerHTML='';
-    allEntries(data).forEach(([label,count])=>{
+    topEntries(data, limit).forEach(([label,count])=>{
       const item=document.createElement('div');
       item.className='chart-list-item';
       const labelEl=document.createElement('span');
@@ -3039,8 +3039,8 @@
     const chartConfig=[
       {id:'catChart', data:topEntries(catCounts,6), type:'doughnut'},
       {id:'sizeChart', data:orderSizeData(sizeCounts), type:'bar', horizontal:true},
-      {id:'industryChart', data:allEntries(industryCounts), type:'bar'},
-      {id:'countryChart', data:allEntries(countryCounts), type:'bar'},
+      {id:'industryChart', data:topEntries(industryCounts,10), type:'bar'},
+      {id:'countryChart', data:topEntries(countryCounts,10), type:'bar'},
       {id:'jobChart', data:topEntries(jobCounts,8), type:'bar', horizontal:true}
     ];
     const categoryColorMap = {
@@ -3073,8 +3073,8 @@
     });
     renderSizeButtons(sizeCounts);
     renderJobCategoryButtons(jobCounts);
-    renderTextList('industryLabels', industryCounts);
-    renderTextList('countryLabels', countryCounts);
+    renderTextList('industryLabels', industryCounts, 10);
+    renderTextList('countryLabels', countryCounts, 10);
   }
   function filterRecords() {
     let filtered=rawData;
