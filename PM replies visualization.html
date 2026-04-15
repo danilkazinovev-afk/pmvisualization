@@ -1,0 +1,3075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSVJSON Data Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      color: #0f172a;
+      background: #f8fafc;
+      font-family: 'Inter', sans-serif;
+      --surface: #ffffff;
+      --surface-strong: #f8fafc;
+      --border: #e2e8f0;
+      --accent: #0ea5e9;
+      --text: #0f172a;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height:100%; background: #f8fafc; color: #0f172a; overflow-x: hidden; }
+    body { background: #f8fafc; }
+    .page { width: min(100%, 1400px); max-width: 1400px; margin: 0 auto; padding: 32px 24px 60px; }
+    .hero { display:grid; gap:24px; margin-bottom:32px; }
+    .hero-top { display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between; }
+    h1 { margin:0; font-size: 3rem; line-height:1.02; letter-spacing:-0.04em; color:#0f172a; }
+    .subtitle { margin:14px 0 0; color:#475569; max-width:720px; font-size:1rem; }
+    .stats-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:16px; }
+    .stat-card, .panel { background: var(--surface); border:1px solid var(--border); border-radius:20px; padding:22px; box-shadow:0 16px 32px rgba(15,23,42,0.06); }
+    .stat-card h2 { margin:0 0 8px; font-size:2rem; color:#0f172a; }
+    .stat-card p { margin:0; color:#475569; font-size:0.95rem; }
+    .charts-grid { display:grid; grid-template-columns: 1.4fr 1fr; gap:20px; margin-top:24px; }
+    .panel-title { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
+    .panel-title h3 { margin:0; font-size:1.05rem; letter-spacing:-0.02em; color:#0f172a; }
+    .panel-body { display:grid; gap:18px; }
+    .mini-grid { display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:16px; }
+    .badge { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px; font-size:0.8rem; background:#e0f2fe; color:#0f172a; }
+    .filter-row { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:18px; }
+    .filter-row label { flex:1 1 210px; display:flex; flex-direction:column; gap:6px; color:#334155; font-size:0.95rem; }
+    select, input { width:100%; border:1px solid #cbd5e1; background:#ffffff; color:#0f172a; border-radius:14px; padding:12px 14px; }
+    table { width:100%; border-collapse: collapse; font-size:0.95rem; background:#ffffff; }
+    th, td { padding:14px 12px; text-align:left; border-bottom:1px solid #e2e8f0; }
+    th { color:#0f172a; font-weight:600; }
+    td { color:#475569; }
+    a.inline-link { color:#0284c7; text-decoration:none; }
+    .footer-note { color:#64748b; margin-top:24px; font-size:0.93rem; }
+    .job-details { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; }
+    .button-group, .size-buttons { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; }
+    .filter-button { background:#f1f5f9; color:#0f172a; border:1px solid #cbd5e1; border-radius:999px; padding:8px 12px; font-size:0.92rem; cursor:pointer; transition: background-color .2s, border-color .2s; }
+    .filter-button.active { background:#0ea5e9; color:#ffffff; border-color:#0ea5e9; }
+    .filter-button:hover { background:#e2e8f0; }
+    .chart-block { width: 100%; min-height: 360px; height: 360px; }
+    .chart-block canvas { display: block; width: 100% !important; height: 100% !important; }
+    .chart-block.small { height: 300px; }
+    @media(max-width: 980px) { .charts-grid { grid-template-columns:1fr; } .mini-grid { grid-template-columns:1fr; } .stats-grid { grid-template-columns: repeat(2, 1fr); } .filter-row { flex-direction: column; } .page { padding: 16px 12px 30px; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="hero">
+      <div class="hero-top">
+        <div class="hero-title">
+          <h1>Pitchmonster Replies dashboard</h1>
+        </div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><h2 id="totalRecords">0</h2><p>Total contacts</p></div>
+        <div class="stat-card"><h2 id="uniqueCountries">0</h2><p>Unique countries</p></div>
+        <div class="stat-card"><h2 id="uniqueIndustries">0</h2><p>Unique industries</p></div>
+        <div class="stat-card"><h2 id="uniqueDomains">0</h2><p>Unique company domains</p></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title"><h3>Active filters</h3><span class="badge" id="activeFilterBadge">All data</span></div>
+      <div class="filter-row">
+        <label>Country<select id="countryFilter"><option value="all">All countries</option></select></label>
+        <label>Industry<select id="industryFilter"><option value="all">All industries</option></select></label>
+        <label>Inbox category<select id="inboxFilter"><option value="all">All inbox categories</option></select></label>
+        <label>Job group<select id="jobFilter"><option value="all">All job categories</option></select></label>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="panel">
+        <div class="panel-title"><h3>Trend overview</h3><span class="badge">Trends, categories, and segmentation</span></div>
+        <div class="panel-body">
+          <div class="mini-grid">
+            <div class="panel"><div class="panel-title"><h3>Inbox readiness</h3></div><div class="chart-block small"><canvas id="catChart"></canvas></div></div>
+            <div class="panel"><div class="panel-title"><h3>Company size</h3></div><div class="chart-label">Company size distribution</div><div id="sizeCategoryButtons" class="button-group"></div><div class="chart-block"><canvas id="sizeChart"></canvas></div></div>
+          </div>
+          <div class="mini-grid">
+            <div class="panel"><div class="panel-title"><h3>Top industries</h3></div><div class="chart-block"><canvas id="industryChart"></canvas></div></div>
+            <div class="panel"><div class="panel-title"><h3>Top countries</h3></div><div class="chart-block"><canvas id="countryChart"></canvas></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><h3>Job category insights</h3></div>
+        <div class="panel-body"><div id="jobCategoryDetails" class="button-group"></div><div class="chart-block"><canvas id="jobChart"></canvas></div><div class="footer-note">Job titles are grouped into broad categories for better trend clarity.</div></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:24px;">
+      <div class="panel-title"><h3>Data sample</h3><span class="badge">Includes all JSON fields</span></div>
+      <div style="overflow-x:auto;">
+      <table>
+        <thead><tr><th>Title</th><th>Job category</th><th>Industry</th><th>Company size</th><th>Country</th><th>Inbox category</th><th>Domain</th><th>LinkedIn</th></tr></thead>
+        <tbody id="dataTable"></tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+  <script>
+  const rawData = [
+  {
+    "Title": "VP of sales",
+    "Country": "United Kingdom",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/danwallis50",
+    "Company size": "501-1000",
+    "Domain": "3eco.com"
+  },
+  {
+    "Title": "director of sales and marketing",
+    "Country": "Finland",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "https://www.linkedin.com/in/ACoAAAzJ7moBa1QJXixrd41kyAEuxmRtJSPgNW4",
+    "Company size": "Empty",
+    "Domain": "aavaohjelmistot.fi"
+  },
+  {
+    "Title": "manager of sales enablement",
+    "Country": "Ireland",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/julie-thys",
+    "Company size": "501-1000",
+    "Domain": "activecampaign.com"
+  },
+  {
+    "Title": "partner sales manager",
+    "Country": "Denmark",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "airtame.com"
+  },
+  {
+    "Title": "head of sales enablement",
+    "Country": "Ukraine",
+    "Industry": "electrical/electronic manufacturing",
+    "InboxCategory": "Interested, Meeting intent",
+    "LinkedIn": "http://www.linkedin.com/in/daryna-hameliak-2654a0125",
+    "Company size": "1001-5000",
+    "Domain": "ajax.systems"
+  },
+  {
+    "Title": "head of sales",
+    "Country": "United States",
+    "Industry": "Software Development",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/meredithchandler",
+    "Company size": "51-200",
+    "Domain": "alignedup.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "France",
+    "Industry": "telecommunications",
+    "InboxCategory": "Interested",
+    "LinkedIn": "http://www.linkedin.com/in/gkentish",
+    "Company size": "51-200",
+    "Domain": "alvatross.io"
+  },
+  {
+    "Title": "director of sales",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "amplitude.com"
+  },
+  {
+    "Title": "director of sales",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "amplitude.com"
+  },
+  {
+    "Title": "head of sales enablement",
+    "Country": "Spain",
+    "Industry": "",
+    "InboxCategory": "Not now",
+    "LinkedIn": "http://www.linkedin.com/in/danielabonet",
+    "Company size": "201-500",
+    "Domain": "applaudostudios.com"
+  },
+  {
+    "Title": "director of sales",
+    "Country": "United States",
+    "Industry": "Financial Services",
+    "InboxCategory": "Interested",
+    "LinkedIn": "https://www.linkedin.com/in/giselambarros",
+    "Company size": "51-200",
+    "Domain": "atta-br.com"
+  },
+  {
+    "Title": "revenue operations lead",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/kylefdoherty",
+    "Company size": "51-200",
+    "Domain": "attio.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Interested",
+    "LinkedIn": "http://www.linkedin.com/in/dawatson453",
+    "Company size": "201-500",
+    "Domain": "aviso.com"
+  },
+  {
+    "Title": "director of sales accounts",
+    "Country": "Poland",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/khajduk",
+    "Company size": "201-500",
+    "Domain": "avsystem.com"
+  },
+  {
+    "Title": "CSO",
+    "Country": "Lithuania",
+    "Industry": "information technology & services",
+    "InboxCategory": "Interested",
+    "LinkedIn": "http://www.linkedin.com/in/kristijonasdunauskas",
+    "Company size": "51-200",
+    "Domain": "banuba.com"
+  },
+  {
+    "Title": "SVP of sales",
+    "Country": "United Arab Emirates",
+    "Industry": "",
+    "InboxCategory": "Interested, Meeting intent",
+    "LinkedIn": "http://www.linkedin.com/in/faisal-zeineddine-b267444b",
+    "Company size": "201-500",
+    "Domain": "bayzat.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "computer & network security",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/ksharara",
+    "Company size": "501-1000",
+    "Domain": "bigid.com"
+  },
+  {
+    "Title": "VP of sales engineering",
+    "Country": "United States",
+    "Industry": "computer & network security",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/chrishoesly",
+    "Company size": "501-1000",
+    "Domain": "bigid.com"
+  },
+  {
+    "Title": "director of sales enablement",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Interested",
+    "LinkedIn": "http://www.linkedin.com/in/acrisman",
+    "Company size": "501-1000",
+    "Domain": "billtrust.com"
+  },
+  {
+    "Title": "VP of sales enablement",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "https://www.linkedin.com/in/andr\u00e9s-hernando-valdivieso-61279693",
+    "Company size": "Empty",
+    "Domain": "birchstreetsystems.com"
+  },
+  {
+    "Title": "head of sales",
+    "Country": "Spain",
+    "Industry": "management consulting",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/bernardigiovanni-businesstravel",
+    "Company size": "Empty",
+    "Domain": "bizaway.com"
+  },
+  {
+    "Title": "co-founder and chief sales officer",
+    "Country": "Hungary",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/andras-wolf-82153611",
+    "Company size": "51-200",
+    "Domain": "blackbelt.hu"
+  },
+  {
+    "Title": "director of sales enablement and operations",
+    "Country": "South Africa",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/lawrence-bryon-75890069",
+    "Company size": "Empty",
+    "Domain": "blacklinesafety.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "Australia",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/elena-deryabina",
+    "Company size": "Empty",
+    "Domain": "blackwall.com"
+  },
+  {
+    "Title": "director of sales",
+    "Country": "Netherlands",
+    "Industry": "marketing & advertising",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/joren-lammertink",
+    "Company size": "51-200",
+    "Domain": "brandfirm.nl"
+  },
+  {
+    "Title": "director of sales",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/ashleymoralez",
+    "Company size": "1001-5000",
+    "Domain": "brightlysoftware.com"
+  },
+  {
+    "Title": "director of sales",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "brightsec.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United Kingdom",
+    "Industry": "financial services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/tobybailey77",
+    "Company size": "51-200",
+    "Domain": "canoeintelligence.com"
+  },
+  {
+    "Title": "VP of strategic alliances and health plan sales",
+    "Country": "United States",
+    "Industry": "hospital & health care",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/ezerneke",
+    "Company size": "201-500",
+    "Domain": "castlighthealth.com"
+  },
+  {
+    "Title": "manager of sales",
+    "Country": "Italy",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "cavliwireless.com"
+  },
+  {
+    "Title": "sales enablement administrator",
+    "Country": "Philippines",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/heather-may-perocho-30b5bb41",
+    "Company size": "501-1000",
+    "Domain": "clickup.com"
+  },
+  {
+    "Title": "director of sales",
+    "Country": "USA",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "https://www.linkedin.com/in/patrickwjhan",
+    "Company size": "Empty",
+    "Domain": "cliwant.com"
+  },
+  {
+    "Title": "director of sales enablement",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Not now",
+    "LinkedIn": "http://www.linkedin.com/in/benhogue",
+    "Company size": "501-1000",
+    "Domain": "cloudbees.com"
+  },
+  {
+    "Title": "director of sales enablement",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Not now",
+    "LinkedIn": "https://www.linkedin.com/in/benhogue",
+    "Company size": "501-1000",
+    "Domain": "cloudbees.com"
+  },
+  {
+    "Title": "director of sales enablement",
+    "Country": "Portugal",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/celia-bruche-33308a34",
+    "Company size": "51-200",
+    "Domain": "cloudtalk.io"
+  },
+  {
+    "Title": "senior program manager of sales enablement",
+    "Country": "Greece",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/alikibardaka",
+    "Company size": "1001-5000",
+    "Domain": "coachhub.com"
+  },
+  {
+    "Title": "revenue operations analyst",
+    "Country": "Canada",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/alaa-ratmi",
+    "Company size": "51-200",
+    "Domain": "commonsku.com"
+  },
+  {
+    "Title": "head of sales enablement",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/mikemacchiarelli",
+    "Company size": "51-200",
+    "Domain": "community.com"
+  },
+  {
+    "Title": "head of revenue growth and operations",
+    "Country": "Brazil",
+    "Industry": "health, wellness & fitness",
+    "InboxCategory": "Interested",
+    "LinkedIn": "http://www.linkedin.com/in/zefigueiredo",
+    "Company size": "501-1000",
+    "Domain": "conexasaude.com.br"
+  },
+  {
+    "Title": "angel investor",
+    "Country": "Croatia",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/zbeslic",
+    "Company size": "51-200",
+    "Domain": "contactout.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "insurance",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/barry-marrone-7202b219b",
+    "Company size": "201-500",
+    "Domain": "continentalgm.com"
+  },
+  {
+    "Title": "head of sales",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/ugniuszasimauskas",
+    "Company size": "Empty",
+    "Domain": "coresignal.com"
+  },
+  {
+    "Title": "director of financial systems and revenue enablement",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/maloriemcdole",
+    "Company size": "51-200",
+    "Domain": "covideo.com"
+  },
+  {
+    "Title": "VP of digital transformation and enterprise sales",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "https://www.linkedin.com/in/scottwerlein",
+    "Company size": "51-200",
+    "Domain": "cri.com"
+  },
+  {
+    "Title": "head of learning and development",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "cribl.io"
+  },
+  {
+    "Title": "revenue enablement manager",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/betsy-mccausland",
+    "Company size": "501-1000",
+    "Domain": "cribl.io"
+  },
+  {
+    "Title": "VP of enterprise sales",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/mikemcgrath07",
+    "Company size": "501-1000",
+    "Domain": "cribl.io"
+  },
+  {
+    "Title": "director of sales operations",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Not now",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "csdisco.com"
+  },
+  {
+    "Title": "chief sales recruitment officer",
+    "Country": "United States",
+    "Industry": "staffing & recruiting",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/johnweaver11588",
+    "Company size": "51-200",
+    "Domain": "culvercareers.com"
+  },
+  {
+    "Title": "head of sales enablement",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Forwarded",
+    "LinkedIn": "http://www.linkedin.com/in/davidknewton",
+    "Company size": "501-1000",
+    "Domain": "cyera.io"
+  },
+  {
+    "Title": "senior program manager of sales enablement",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/varun-desai-3b7747ba",
+    "Company size": "5001-10000",
+    "Domain": "databricks.com"
+  },
+  {
+    "Title": "SVP of enterprise sales",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/amybwilson01",
+    "Company size": "501-1000",
+    "Domain": "dataminr.com"
+  },
+  {
+    "Title": "CEO",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/nickdelpego",
+    "Company size": "51-200",
+    "Domain": "deckard.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "",
+    "Company size": "501-1000",
+    "Domain": "degreed.com"
+  },
+  {
+    "Title": "sales enablement manager",
+    "Country": "Argentina",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/maluisamartinez",
+    "Company size": "501-1000",
+    "Domain": "devrev.ai"
+  },
+  {
+    "Title": "rvp of sales",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/benbaiamonte",
+    "Company size": "1001-5000",
+    "Domain": "dialpad.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "digitalturbine.com"
+  },
+  {
+    "Title": "director of development and creative producer",
+    "Country": "United States",
+    "Industry": "media production",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/paul-robalino",
+    "Company size": "11-50",
+    "Domain": "dropout.tv"
+  },
+  {
+    "Title": "sales enablement lead",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "druva.com"
+  },
+  {
+    "Title": "VP of sales operations",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "druva.com"
+  },
+  {
+    "Title": "director of sales",
+    "Country": "United States",
+    "Industry": "retail",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/mattflaxman",
+    "Company size": "201-500",
+    "Domain": "eagleeye.com"
+  },
+  {
+    "Title": "sales enablement manager",
+    "Country": "United Kingdom",
+    "Industry": "retail",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/maria-arrachidi",
+    "Company size": "201-500",
+    "Domain": "eagleeye.com"
+  },
+  {
+    "Title": "head of sales",
+    "Country": "Slovenia",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/nikolafegus",
+    "Company size": "Empty",
+    "Domain": "ebonitete.si"
+  },
+  {
+    "Title": "CSO",
+    "Country": "Australia",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/stacey-mcgoldrick-050638b4",
+    "Company size": "51-200",
+    "Domain": "ecoportal.com"
+  },
+  {
+    "Title": "chief sales officer",
+    "Country": "Sweden",
+    "Industry": "gambling & casinos",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/martin-lerby-28a9472",
+    "Company size": "51-200",
+    "Domain": "elk-studios.com"
+  },
+  {
+    "Title": "director of sales enablement",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/marlee-stevens",
+    "Company size": "Empty",
+    "Domain": "emplifi.io"
+  },
+  {
+    "Title": "VP of marketing and sales operations",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/priti-dalal",
+    "Company size": "51-200",
+    "Domain": "enrollment123.com"
+  },
+  {
+    "Title": "director of sales",
+    "Country": "Finland",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "https://www.linkedin.com/in/ACoAAABceNABQZjxm3DqAhz-3E8tapc80rRBEkg/",
+    "Company size": "Empty",
+    "Domain": "epicbrief.com"
+  },
+  {
+    "Title": "director of technical sales",
+    "Country": "Ireland",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/barry-mcginley-109817128",
+    "Company size": "201-500",
+    "Domain": "epsglobal.com"
+  },
+  {
+    "Title": "COO of broadcast sales and syndication",
+    "Country": "United States",
+    "Industry": "entertainment",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/andrew-temple-6990a3a",
+    "Company size": "201-500",
+    "Domain": "es.tv"
+  },
+  {
+    "Title": "director of sales enablement programs",
+    "Country": "Greece",
+    "Industry": "human resources",
+    "InboxCategory": "Interested, Meeting intent",
+    "LinkedIn": "http://www.linkedin.com/in/sofia-anadiotou-mba-aict-66a5331b",
+    "Company size": "11-50",
+    "Domain": "essential.com.gr"
+  },
+  {
+    "Title": "director of sales",
+    "Country": "United Kingdom",
+    "Industry": "Software Development",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/ianwebb1982",
+    "Company size": "51-200",
+    "Domain": "eventmobi.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/cameronackbury",
+    "Company size": "51-200",
+    "Domain": "everest-erp.com"
+  },
+  {
+    "Title": "VP of enablement and sales operations",
+    "Country": "Germany",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "https://www.linkedin.com/in/ulf-venne-a885a633",
+    "Company size": "Empty",
+    "Domain": "everstream.ai"
+  },
+  {
+    "Title": "director of commercial leasing and sales",
+    "Country": "United States",
+    "Industry": "real estate",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/jdipiazza",
+    "Company size": "201-500",
+    "Domain": "exrny.com"
+  },
+  {
+    "Title": "director of sales technology",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "fastly.com"
+  },
+  {
+    "Title": "senior director of sales",
+    "Country": "Spain",
+    "Industry": "",
+    "InboxCategory": "Forwarded",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "fastly.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United Kingdom",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "fastly.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "insurance",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/nick-gullett-cltc-54071156",
+    "Company size": "201-500",
+    "Domain": "figmarketing.com"
+  },
+  {
+    "Title": "director of business development",
+    "Country": "Singapore",
+    "Industry": "financial services",
+    "InboxCategory": "Interested, Meeting intent",
+    "LinkedIn": "http://www.linkedin.com/in/anuj-kapoor-19392269",
+    "Company size": "51-200",
+    "Domain": "finmo.net"
+  },
+  {
+    "Title": "VP of enterprise sales",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "https://www.linkedin.com/in/timdawkins",
+    "Company size": "201-500",
+    "Domain": "firstup.io"
+  },
+  {
+    "Title": "revenue enablement",
+    "Country": "Brazil",
+    "Industry": "financial services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/thifany-prates-de-oliveira",
+    "Company size": "1001-5000",
+    "Domain": "flashapp.com.br"
+  },
+  {
+    "Title": "director of enterprise sales",
+    "Country": "USA",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/bjorntrejo/",
+    "Company size": "Empty",
+    "Domain": "flexfactor.io"
+  },
+  {
+    "Title": "head of sales enablement",
+    "Country": "Greece",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not now",
+    "LinkedIn": "http://www.linkedin.com/in/gia-cantillana-9b4b968",
+    "Company size": "51-200",
+    "Domain": "flipnode.net"
+  },
+  {
+    "Title": "salesforce administrator and revenue operations analyst",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/kenneth-torio-bab4791a0",
+    "Company size": "51-200",
+    "Domain": "flowhub.com"
+  },
+  {
+    "Title": "president",
+    "Country": "United States",
+    "Industry": "marketing & advertising",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/luciano-rammairone-9514031b",
+    "Company size": "201-500",
+    "Domain": "fluentco.com"
+  },
+  {
+    "Title": "head of learning and growth",
+    "Country": "United Kingdom",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/philipandersson",
+    "Company size": "1001-5000",
+    "Domain": "flywire.com"
+  },
+  {
+    "Title": "learning and development specialist",
+    "Country": "Ukraine",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/vitaliidorda",
+    "Company size": "Empty",
+    "Domain": "fortegrp.com"
+  },
+  {
+    "Title": "director of sales enablement",
+    "Country": "United States",
+    "Industry": "computer networking",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/timcrlsn",
+    "Company size": "Empty",
+    "Domain": "forwardnetworks.com"
+  },
+  {
+    "Title": "senior manager of revenue operations",
+    "Country": "United Kingdom",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/gemma-sprankling",
+    "Company size": "201-500",
+    "Domain": "fountain.com"
+  },
+  {
+    "Title": "director of sales enablement",
+    "Country": "Australia",
+    "Industry": "higher education",
+    "InboxCategory": "Interested, Meeting intent",
+    "LinkedIn": "http://www.linkedin.com/in/joshua-ross-42913b117",
+    "Company size": "51-200",
+    "Domain": "fourthrev.com"
+  },
+  {
+    "Title": "revenue operations specialist",
+    "Country": "United Kingdom",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/alexandra-staggl",
+    "Company size": "201-500",
+    "Domain": "fresha.com"
+  },
+  {
+    "Title": "lead of revenue enablement",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/benjamin-bowles",
+    "Company size": "1001-5000",
+    "Domain": "freshworks.com"
+  },
+  {
+    "Title": "senior gtm enablement manager",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/joshrscott",
+    "Company size": "51-200",
+    "Domain": "gem.com"
+  },
+  {
+    "Title": "director of sales enablement",
+    "Country": "United Kingdom",
+    "Industry": "information technology & services",
+    "InboxCategory": "Interested",
+    "LinkedIn": "http://www.linkedin.com/in/federico-presicci",
+    "Company size": "Empty",
+    "Domain": "getaccept.com"
+  },
+  {
+    "Title": "revenue operations",
+    "Country": "Argentina",
+    "Industry": "financial services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/ignacio-fernandez-capiet-91b662200",
+    "Company size": "51-200",
+    "Domain": "getglim.com"
+  },
+  {
+    "Title": "head of sales",
+    "Country": "Spain",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/nathan-rouquet",
+    "Company size": "201-500",
+    "Domain": "getresponse.com"
+  },
+  {
+    "Title": "SVP of sales",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/paul-alexander-48b947",
+    "Company size": "501-1000",
+    "Domain": "gloo.us"
+  },
+  {
+    "Title": "revenue operations and deal desk administrator",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/tiffanyrhunter",
+    "Company size": "201-500",
+    "Domain": "gocanvas.com"
+  },
+  {
+    "Title": "head of revenue operations",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/andrewdixon95",
+    "Company size": "51-200",
+    "Domain": "goethena.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "sports",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/nick-wolfe-73709020",
+    "Company size": "51-200",
+    "Domain": "golfgenius.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United Kingdom",
+    "Industry": "information technology & services",
+    "InboxCategory": "Interested",
+    "LinkedIn": "http://www.linkedin.com/in/joshradford",
+    "Company size": "51-200",
+    "Domain": "goodstack.io"
+  },
+  {
+    "Title": "cao and business and sales coach",
+    "Country": "United States",
+    "Industry": "professional training & coaching",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/chrisdonhargrett",
+    "Company size": "201-500",
+    "Domain": "grantcardone.com"
+  },
+  {
+    "Title": "head of sales",
+    "Country": "Hong Kong",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/maxiyuan",
+    "Company size": "201-500",
+    "Domain": "gtngroup.com"
+  },
+  {
+    "Title": "director of growth and sales",
+    "Country": "United States",
+    "Industry": "marketing & advertising",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/paria-bagheri-790263124",
+    "Company size": "201-500",
+    "Domain": "hawkemedia.com"
+  },
+  {
+    "Title": "sales enablement specialist",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/zoeblume",
+    "Company size": "501-1000",
+    "Domain": "highspot.com"
+  },
+  {
+    "Title": "rvp of sales",
+    "Country": "United Kingdom",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/jimmy-hightouch",
+    "Company size": "201-500",
+    "Domain": "hightouch.com"
+  },
+  {
+    "Title": "president and owner",
+    "Country": "United States",
+    "Industry": "real estate",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/holly-and-wayne-wyckoff-80925323",
+    "Company size": "1001-5000",
+    "Domain": "hollyandwayne.com"
+  },
+  {
+    "Title": "sales enablement manager",
+    "Country": "Canada",
+    "Industry": "information technology & services",
+    "InboxCategory": "Interested, Meeting intent",
+    "LinkedIn": "http://www.linkedin.com/in/danielledemontbrun",
+    "Company size": "1001-5000",
+    "Domain": "hootsuite.com"
+  },
+  {
+    "Title": "CRO",
+    "Country": "United States",
+    "Industry": "Technology, Information and Internet",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "https://www.linkedin.com/in/tylerbaldwin1",
+    "Company size": "201-500",
+    "Domain": "hopskipdrive.com"
+  },
+  {
+    "Title": "co-founder",
+    "Country": "Canada",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/james-white10",
+    "Company size": "Empty",
+    "Domain": "hottakesapp.com"
+  },
+  {
+    "Title": "president and CEO",
+    "Country": "Italy",
+    "Industry": "facilities services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/claudio-verga-a062776",
+    "Company size": "51-200",
+    "Domain": "hqe.it"
+  },
+  {
+    "Title": "rvp of sales",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/nateivie",
+    "Company size": "1001-5000",
+    "Domain": "impact.com"
+  },
+  {
+    "Title": "VP of growth and development",
+    "Country": "United States",
+    "Industry": "insurance",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/ty-james-madeforimpact",
+    "Company size": "51-200",
+    "Domain": "impactlegacygroup.com"
+  },
+  {
+    "Title": "VP of sales operations",
+    "Country": "Poland",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "https://www.linkedin.com/in/skizyma",
+    "Company size": "Empty",
+    "Domain": "indeema.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "real estate",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/davebruckner",
+    "Company size": "501-1000",
+    "Domain": "insiderealestate.com"
+  },
+  {
+    "Title": "manager of sales enablement",
+    "Country": "Hungary",
+    "Industry": "e-learning",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/zsolt-nagy-33a877131",
+    "Company size": "1001-5000",
+    "Domain": "instructure.com"
+  },
+  {
+    "Title": "head of pre-sales",
+    "Country": "Poland",
+    "Industry": "",
+    "InboxCategory": "Interested",
+    "LinkedIn": "http://www.linkedin.com/in/oleksii-nakonechnyi",
+    "Company size": "Empty",
+    "Domain": "intellectsoft.net"
+  },
+  {
+    "Title": "sales operations manager",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "inten.to"
+  },
+  {
+    "Title": "head of sales",
+    "Country": "India",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/chanchal-kamboj-921344a6",
+    "Company size": "Empty",
+    "Domain": "intozi.io"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/kohnor-gregory-69581277",
+    "Company size": "501-1000",
+    "Domain": "island.io"
+  },
+  {
+    "Title": "CSO",
+    "Country": "France",
+    "Industry": "staffing & recruiting",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/arnaud-cousteix-77529939",
+    "Company size": "201-500",
+    "Domain": "jobteaser.com"
+  },
+  {
+    "Title": "VP of operations",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/gayle-mathys-53950a1b",
+    "Company size": "51-200",
+    "Domain": "kellerwilliams.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "Israel",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/nadav-kerzner-0980a617",
+    "Company size": "51-200",
+    "Domain": "kissterra.com"
+  },
+  {
+    "Title": "sales operations manager",
+    "Country": "Ukraine",
+    "Industry": "",
+    "InboxCategory": "Not now",
+    "LinkedIn": "https://www.linkedin.com/in/natalie-briko-465a4115b",
+    "Company size": "Empty",
+    "Domain": "knubisoft.com"
+  },
+  {
+    "Title": "director of channel sales",
+    "Country": "United Kingdom",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/peterdalziel",
+    "Company size": "51-200",
+    "Domain": "komodor.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/kfree",
+    "Company size": "51-200",
+    "Domain": "komodor.com"
+  },
+  {
+    "Title": "senior sales development representative",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "krisp.ai"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "Switzerland",
+    "Industry": "mental health care",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/ludovicpureur",
+    "Company size": "51-200",
+    "Domain": "kyanhealth.com"
+  },
+  {
+    "Title": "head of sales",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/dave-mcclung-64397a3",
+    "Company size": "51-200",
+    "Domain": "labos.co"
+  },
+  {
+    "Title": "chief sales officer",
+    "Country": "Sweden",
+    "Industry": "e-learning",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/helenafryklund",
+    "Company size": "201-500",
+    "Domain": "lanterna.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/jillianwilkes",
+    "Company size": "1001-5000",
+    "Domain": "later.com"
+  },
+  {
+    "Title": "CSO",
+    "Country": "United States",
+    "Industry": "financial services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/hasan-o\u011fuz-g\u00fczel-305189a0",
+    "Company size": "201-500",
+    "Domain": "lendbuzz.com"
+  },
+  {
+    "Title": "director of sales enablement",
+    "Country": "information technology & services",
+    "Industry": "Pittsburgh",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "Pennsylvania",
+    "Company size": "Empty",
+    "Domain": "letsonboard.com"
+  },
+  {
+    "Title": "assistant manager of sales training",
+    "Country": "United Arab Emirates",
+    "Industry": "food & beverages",
+    "InboxCategory": "Interested",
+    "LinkedIn": "http://www.linkedin.com/in/sheena-shaji-840740172",
+    "Company size": "1001-5000",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "associate director of sales enablement",
+    "Country": "India",
+    "Industry": "information technology & services",
+    "InboxCategory": "Forwarded",
+    "LinkedIn": "http://www.linkedin.com/in/rochila-dcosta-18bb6582",
+    "Company size": "501-1000",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "associate of finance and revenue operations",
+    "Country": "India",
+    "Industry": "information technology & services",
+    "InboxCategory": "Interested",
+    "LinkedIn": "http://www.linkedin.com/in/jeyakeerthan",
+    "Company size": "51-200",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "chief sales officer",
+    "Country": "Pakistan",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not now",
+    "LinkedIn": "http://www.linkedin.com/in/rauf-khan-049329258",
+    "Company size": "201-500",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "consultant of revenue operations",
+    "Country": "India",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/gagandeep-sohanpal",
+    "Company size": "51-200",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "CSO",
+    "Country": "India",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not now",
+    "LinkedIn": "http://www.linkedin.com/in/murugesh-swamy-614a4012",
+    "Company size": "201-500",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "director of business development and inside sales",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Interested",
+    "LinkedIn": "https://www.linkedin.com/in/meganehardy",
+    "Company size": "501-1000",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "director of product marketing and sales enablement",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Forwarded",
+    "LinkedIn": "http://www.linkedin.com/in/timothy-w-89326023",
+    "Company size": "51-200",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "director of revenue enablement",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Interested, Meeting intent",
+    "LinkedIn": "http://www.linkedin.com/in/sean-bailey-15175953",
+    "Company size": "1001-5000",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "director of revenue operations",
+    "Country": "Israel",
+    "Industry": "information technology & services",
+    "InboxCategory": "Interested",
+    "LinkedIn": "http://www.linkedin.com/in/yuvaldanieli",
+    "Company size": "51-200",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "head of revenue enablement",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/drgregoryanderson",
+    "Company size": "501-1000",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "operations manager of revenue systems",
+    "Country": "Poland",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/radek-dominiak-5794115",
+    "Company size": "501-1000",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "principal gtm enablement manager",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not now",
+    "LinkedIn": "http://www.linkedin.com/in/seanreay",
+    "Company size": "1001-5000",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "revenue operations",
+    "Country": "India",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/dr-shivangi-sinha-962086bb",
+    "Company size": "501-1000",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "revenue operations and cms hub expert",
+    "Country": "India",
+    "Industry": "information technology & services",
+    "InboxCategory": "Forwarded",
+    "LinkedIn": "http://www.linkedin.com/in/gauravannaa",
+    "Company size": "51-200",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "revenue operations specialist",
+    "Country": "India",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/amanmkr",
+    "Company size": "501-1000",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "sales enablement",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/pricetyler",
+    "Company size": "501-1000",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "sales enablement",
+    "Country": "India",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/jomy-joy-31525669",
+    "Company size": "501-1000",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "sales enablement manager",
+    "Country": "United States",
+    "Industry": "financial services",
+    "InboxCategory": "Forwarded",
+    "LinkedIn": "http://www.linkedin.com/in/ryangobar",
+    "Company size": "51-200",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "sales enablement manager",
+    "Country": "United States",
+    "Industry": "e-learning",
+    "InboxCategory": "Forwarded",
+    "LinkedIn": "http://www.linkedin.com/in/wmathiasjr",
+    "Company size": "501-1000",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "sales enablement specialist",
+    "Country": "Australia",
+    "Industry": "information technology & services",
+    "InboxCategory": "Interested",
+    "LinkedIn": "http://www.linkedin.com/in/ericaltoth",
+    "Company size": "1001-5000",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "sales operations manager",
+    "Country": "India",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/srividhya-a-142572136",
+    "Company size": "201-500",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "sales training faculty member",
+    "Country": "United States",
+    "Industry": "pharmaceuticals",
+    "InboxCategory": "Interested",
+    "LinkedIn": "http://www.linkedin.com/in/taylor-rossmoore-35285ba2",
+    "Company size": "201-500",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "senior facilitator of sales enablement",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not now",
+    "LinkedIn": "http://www.linkedin.com/in/andrea-bohler-mba-495b5216",
+    "Company size": "1001-5000",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "senior learning and development specialist",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/gerodstrothenke",
+    "Company size": "51-200",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "senior manager of sales strategy enablement and operations",
+    "Country": "United Kingdom",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not now",
+    "LinkedIn": "http://www.linkedin.com/in/rhys-winters-84a80715",
+    "Company size": "501-1000",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "senior product marketing manager",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Forwarded",
+    "LinkedIn": "http://www.linkedin.com/in/amandamjordanphl",
+    "Company size": "201-500",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "senior revenue enablement specialist",
+    "Country": "United States",
+    "Industry": "computer & network security",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/ryanaiosa",
+    "Company size": "1001-5000",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "senior revops manager and salesforce consultant",
+    "Country": "India",
+    "Industry": "information technology & services",
+    "InboxCategory": "Interested",
+    "LinkedIn": "http://www.linkedin.com/in/tariq-hasan-047",
+    "Company size": "501-1000",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "senior risk management consultant",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Not now",
+    "LinkedIn": "http://www.linkedin.com/in/patricia-c-75a16627",
+    "Company size": "501-1000",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "senior specialist of sales training and development",
+    "Country": "United States",
+    "Industry": "education management",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/annetteshakinovsky",
+    "Company size": "1001-5000",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "specialist of revenue operations",
+    "Country": "Brazil",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/isabela-lopes-oliveira",
+    "Company size": "201-500",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "revenue enablement",
+    "Country": "India",
+    "Industry": "information technology & services",
+    "InboxCategory": "Forwarded",
+    "LinkedIn": "http://www.linkedin.com/in/kartik-satish-45029b1a",
+    "Company size": "201-500",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "VP of enterprise sales",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Not now",
+    "LinkedIn": "https://www.linkedin.com/in/dustin-zimmermann-95075a63",
+    "Company size": "201-500",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "VP of media and sales",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/nick-coston-9780123",
+    "Company size": "201-500",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "VP of revenue operations and marketing operations",
+    "Country": "India",
+    "Industry": "information technology & services",
+    "InboxCategory": "Forwarded",
+    "LinkedIn": "http://www.linkedin.com/in/dinesh-garg",
+    "Company size": "501-1000",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/keithabramson",
+    "Company size": "501-1000",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "computer & network security",
+    "InboxCategory": "Not now",
+    "LinkedIn": "http://www.linkedin.com/in/matthewcappello",
+    "Company size": "201-500",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "VP of training and revenue enablement",
+    "Country": "United States",
+    "Industry": "computer & network security",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/ryankolofsky",
+    "Company size": "1001-5000",
+    "Domain": "liknedincontact.cc"
+  },
+  {
+    "Title": "sales enablement",
+    "Country": "United States",
+    "Industry": "Public Safety",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/bradhorspool",
+    "Company size": "51-200",
+    "Domain": "linktr.ee"
+  },
+  {
+    "Title": "revenue operations manager",
+    "Country": "Australia",
+    "Industry": "real estate",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/jason-benatsky-02ab29ba",
+    "Company size": "51-200",
+    "Domain": "localagentfinder.com.au"
+  },
+  {
+    "Title": "VP of channel sales",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/michaeltarbet",
+    "Company size": "1001-5000",
+    "Domain": "logicmonitor.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "retail",
+    "InboxCategory": "Forwarded",
+    "LinkedIn": "http://www.linkedin.com/in/tom-shrader-094364b1",
+    "Company size": "201-500",
+    "Domain": "logile.com"
+  },
+  {
+    "Title": "CRO",
+    "Country": "United Kingdom",
+    "Industry": "translation & localization",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/al-newman-82a8721",
+    "Company size": "201-500",
+    "Domain": "lokalise.com"
+  },
+  {
+    "Title": "director of sales development",
+    "Country": "USA",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/kennedy-baxter/",
+    "Company size": "Empty",
+    "Domain": "lumahealth.io"
+  },
+  {
+    "Title": "head of gtm enablement and partnerships",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Interested",
+    "LinkedIn": "http://www.linkedin.com/in/blakeakelly",
+    "Company size": "51-200",
+    "Domain": "mabl.com"
+  },
+  {
+    "Title": "director of sales enablement",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/steelerobert",
+    "Company size": "1001-5000",
+    "Domain": "mailgun.com"
+  },
+  {
+    "Title": "director of sales enablement",
+    "Country": "",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "marginedge.com"
+  },
+  {
+    "Title": "manager of business development",
+    "Country": "USA",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/ACwAAC4_1w4BFfRtJ2YKVp3owQPGaNe1I732VvE/",
+    "Company size": "Empty",
+    "Domain": "marq.com"
+  },
+  {
+    "Title": "SVP of sales and service",
+    "Country": "United States",
+    "Industry": "insurance",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/stephanieschultz22",
+    "Company size": "201-500",
+    "Domain": "matic.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "mednetsolutions.com"
+  },
+  {
+    "Title": "VP of commercial revenue",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/mimihamid",
+    "Company size": "1001-5000",
+    "Domain": "meetmarigold.com"
+  },
+  {
+    "Title": "director of gtm enablement",
+    "Country": "United States",
+    "Industry": "computer & network security",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/pamela-dake-1152483",
+    "Company size": "201-500",
+    "Domain": "menlosecurity.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "Software Development",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/jeffrey-mcdonough-17751247",
+    "Company size": "Empty",
+    "Domain": "mindtickle.com"
+  },
+  {
+    "Title": "director of technical sales",
+    "Country": "United States",
+    "Industry": "Software Development",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/jakob-fenger-50103640",
+    "Company size": "51-200",
+    "Domain": "mirabeltechnologies.com"
+  },
+  {
+    "Title": "chief sales officer and co-owner",
+    "Country": "France",
+    "Industry": "retail",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/mike-vasco",
+    "Company size": "51-200",
+    "Domain": "moutfitters.com"
+  },
+  {
+    "Title": "director of sales enablement",
+    "Country": "United States",
+    "Industry": "utilities",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/jimhashman",
+    "Company size": "51-200",
+    "Domain": "moveconcierge.com"
+  },
+  {
+    "Title": "head of sales",
+    "Country": "Canada",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/kensedwards",
+    "Company size": "51-200",
+    "Domain": "mutinyhq.com"
+  },
+  {
+    "Title": "associate director of learning and development",
+    "Country": "Ukraine",
+    "Industry": "",
+    "InboxCategory": "Interested",
+    "LinkedIn": "http://www.linkedin.com/in/mariana-khomitska-04751b42",
+    "Company size": "Empty",
+    "Domain": "n-ix.com"
+  },
+  {
+    "Title": "director of enterprise sales",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "nabla.com"
+  },
+  {
+    "Title": "VP of operations",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/gingerdacus",
+    "Company size": "11-50",
+    "Domain": "nashvillerealestate.com"
+  },
+  {
+    "Title": "revenue enablement lead",
+    "Country": "India",
+    "Industry": "financial services",
+    "InboxCategory": "Interested, Meeting intent",
+    "LinkedIn": "http://www.linkedin.com/in/pavi-narayanan-paige-017280123",
+    "Company size": "201-500",
+    "Domain": "nativeteams.com"
+  },
+  {
+    "Title": "director of sales enablement and marketing",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Interested, Meeting intent",
+    "LinkedIn": "http://www.linkedin.com/in/jaimee-gordesky-08a9663",
+    "Company size": "51-200",
+    "Domain": "nayya.com"
+  },
+  {
+    "Title": "director of sales",
+    "Country": "USA",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "https://www.linkedin.com/in/ACoAACt0W4QBP12esBavxmoIoEROzoQOSSlhjLk/",
+    "Company size": "Empty",
+    "Domain": "novoflow.io"
+  },
+  {
+    "Title": "head of sales enablement",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "https://www.linkedin.com/in/andy-blumstein-81b1771a",
+    "Company size": "Empty",
+    "Domain": "numerix.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "real estate",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/stacietennyson",
+    "Company size": "11-50",
+    "Domain": "nurtureboss.io"
+  },
+  {
+    "Title": "director of revenue operations and analytics",
+    "Country": "Brazil",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/deboramarchetti",
+    "Company size": "1001-5000",
+    "Domain": "nuvemshop.com.br"
+  },
+  {
+    "Title": "senior director of sales enablement",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Interested, Meeting intent",
+    "LinkedIn": "https://www.linkedin.com/in/jamesesposito",
+    "Company size": "501-1000",
+    "Domain": "olo.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "https://www.linkedin.com/in/mikepazirandeh",
+    "Company size": "201-500",
+    "Domain": "on24.com"
+  },
+  {
+    "Title": "director of sales",
+    "Country": "Israel",
+    "Industry": "",
+    "InboxCategory": "Forwarded",
+    "LinkedIn": "http://www.linkedin.com/in/davidkoz",
+    "Company size": "51-200",
+    "Domain": "onebeat.co"
+  },
+  {
+    "Title": "manager of gtm enablement and sales",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/ray-aversa",
+    "Company size": "201-500",
+    "Domain": "ontra.ai"
+  },
+  {
+    "Title": "founder and CEO",
+    "Country": "Singapore",
+    "Industry": "information technology & services",
+    "InboxCategory": "Interested, Meeting intent",
+    "LinkedIn": "http://www.linkedin.com/in/cedriclq",
+    "Company size": "Empty",
+    "Domain": "ooolab.edu.vn"
+  },
+  {
+    "Title": "revenue operations lead",
+    "Country": "Australia",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/benswain1",
+    "Company size": "51-200",
+    "Domain": "optimalworkshop.com"
+  },
+  {
+    "Title": "CSO",
+    "Country": "Croatia",
+    "Industry": "defense & space",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/ivanjelusic",
+    "Company size": "51-200",
+    "Domain": "orqafpv.com"
+  },
+  {
+    "Title": "head of revenue strategy",
+    "Country": "USA",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/daisychung13",
+    "Company size": "Empty",
+    "Domain": "orum.com"
+  },
+  {
+    "Title": "chief sales officer",
+    "Country": "Netherlands",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/martijnt",
+    "Company size": "51-200",
+    "Domain": "papirfly.com"
+  },
+  {
+    "Title": "director of sales enablement",
+    "Country": "United States",
+    "Industry": "hospital & health care",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/robert-shaw-046a4616",
+    "Company size": "201-500",
+    "Domain": "parachutehealth.com"
+  },
+  {
+    "Title": "head of sales and business development and co-founder",
+    "Country": "France",
+    "Industry": "",
+    "InboxCategory": "Interested, Meeting intent",
+    "LinkedIn": "http://www.linkedin.com/in/konstantinvasilenko",
+    "Company size": "Empty",
+    "Domain": "paybis.com"
+  },
+  {
+    "Title": "head of growth and revenue orchestration",
+    "Country": "Australia",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "https://www.linkedin.com/in/jade-el-sayed-587219153/",
+    "Company size": "Empty",
+    "Domain": "payfurl.com"
+  },
+  {
+    "Title": "senior director of sales enablement and strategy",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Interested, Meeting intent",
+    "LinkedIn": "https://www.linkedin.com/in/marketing-sales-enablement",
+    "Company size": "Empty",
+    "Domain": "paytronix.com"
+  },
+  {
+    "Title": "sales enablement",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/alaia",
+    "Company size": "201-500",
+    "Domain": "people.ai"
+  },
+  {
+    "Title": "senior director of revenue enablement and sales operations",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Interested, Meeting intent",
+    "LinkedIn": "https://www.linkedin.com/in/lauraebecker",
+    "Company size": "Empty",
+    "Domain": "persuit.com"
+  },
+  {
+    "Title": "senior revenue operations analyst",
+    "Country": "Brazil",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/amandasoaresrosa",
+    "Company size": "501-1000",
+    "Domain": "pipefy.com"
+  },
+  {
+    "Title": "head of sales enablement",
+    "Country": "Spain",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/luisstacruz",
+    "Company size": "51-200",
+    "Domain": "pistachioapp.com"
+  },
+  {
+    "Title": "revenue enablement",
+    "Country": "France",
+    "Industry": "information technology & services",
+    "InboxCategory": "Interested",
+    "LinkedIn": "http://www.linkedin.com/in/maya-amineddine-76b24613a",
+    "Company size": "51-200",
+    "Domain": "prismic.io"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "India",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/jayveersamant",
+    "Company size": "11-50",
+    "Domain": "proshort.ai"
+  },
+  {
+    "Title": "head of gtm enablement",
+    "Country": "United States",
+    "Industry": "computer & network security",
+    "InboxCategory": "Interested, Meeting intent",
+    "LinkedIn": "http://www.linkedin.com/in/tanyaaisley",
+    "Company size": "201-500",
+    "Domain": "protegrity.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "Software Development",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "puppygraph.com"
+  },
+  {
+    "Title": "director of sales",
+    "Country": "USA",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "https://www.linkedin.com/in/tylerhreed",
+    "Company size": "Empty",
+    "Domain": "qolo.io"
+  },
+  {
+    "Title": "chief business officer",
+    "Country": "France",
+    "Industry": "research",
+    "InboxCategory": "Forwarded",
+    "LinkedIn": "http://www.linkedin.com/in/robin-sinha-5a590871",
+    "Company size": "51-200",
+    "Domain": "quantificare.com"
+  },
+  {
+    "Title": "managing director of sales enablement",
+    "Country": "Canada",
+    "Industry": "investment management",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/sandra-rees-a7b901b7",
+    "Company size": "1001-5000",
+    "Domain": "rbc.com"
+  },
+  {
+    "Title": "senior director of revenue operations",
+    "Country": "Canada",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/liamredmond1",
+    "Company size": "501-1000",
+    "Domain": "rechargeapps.com"
+  },
+  {
+    "Title": "CRO",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/alysonwelch",
+    "Company size": "201-500",
+    "Domain": "reltio.com"
+  },
+  {
+    "Title": "director of solutions engineering",
+    "Country": "United States",
+    "Industry": "Software Development",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/benjamin-wright-7645708b",
+    "Company size": "51-200",
+    "Domain": "repsly.com"
+  },
+  {
+    "Title": "VP of partners and channel sales",
+    "Country": "United States",
+    "Industry": "Software Development",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "https://www.linkedin.com/in/kevinflike",
+    "Company size": "51-200",
+    "Domain": "repsly.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "Canada",
+    "Industry": "human resources",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/therealjamespower",
+    "Company size": "51-200",
+    "Domain": "risepeople.com"
+  },
+  {
+    "Title": "manager of brokers",
+    "Country": "Canada",
+    "Industry": "",
+    "InboxCategory": "Forwarded",
+    "LinkedIn": "http://www.linkedin.com/in/lynnhoffmann",
+    "Company size": "501-1000",
+    "Domain": "rmxemail.com"
+  },
+  {
+    "Title": "director of sales enablement",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "https://www.linkedin.com/in/jennhaskellmba",
+    "Company size": "Empty",
+    "Domain": "safetychain.com"
+  },
+  {
+    "Title": "director of sales",
+    "Country": "United States",
+    "Industry": "Software Development",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "https://www.linkedin.com/in/nate-carmody-9443a777",
+    "Company size": "51-200",
+    "Domain": "saleshood.com"
+  },
+  {
+    "Title": "SVP of sales",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/cory-ayres-2347a81",
+    "Company size": "51-200",
+    "Domain": "saleshood.com"
+  },
+  {
+    "Title": "rvp of sales",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/mathewfyoung",
+    "Company size": "501-1000",
+    "Domain": "salesloft.com"
+  },
+  {
+    "Title": "senior sales enablement specialist",
+    "Country": "Poland",
+    "Industry": "",
+    "InboxCategory": "Interested, Meeting intent",
+    "LinkedIn": "http://www.linkedin.com/in/vladyslav-a-tkachenko",
+    "Company size": "201-500",
+    "Domain": "salesmanago.com"
+  },
+  {
+    "Title": "revenue operations manager",
+    "Country": "United States",
+    "Industry": "insurance",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/guszeidman",
+    "Company size": "201-500",
+    "Domain": "sanabenefits.com"
+  },
+  {
+    "Title": "director of aes and sales enablement",
+    "Country": "United Kingdom",
+    "Industry": "research",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/nicolas-calvert-b398b627",
+    "Company size": "51-200",
+    "Domain": "sanogenetics.com"
+  },
+  {
+    "Title": "business development and revenue operations consultant",
+    "Country": "India",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/nakshatgupta",
+    "Company size": "2-10",
+    "Domain": "scalient.ventures"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United Kingdom",
+    "Industry": "information technology & services",
+    "InboxCategory": "Interested",
+    "LinkedIn": "http://www.linkedin.com/in/gerlinde-rudelstorfer",
+    "Company size": "51-200",
+    "Domain": "scilife.io"
+  },
+  {
+    "Title": "AVP of sales",
+    "Country": "India",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/mayank-kashyap",
+    "Company size": "201-500",
+    "Domain": "scoreme.in"
+  },
+  {
+    "Title": "director of sales enablement",
+    "Country": "Norway",
+    "Industry": "online media",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/mariustungesvik",
+    "Company size": "11-50",
+    "Domain": "seen.io"
+  },
+  {
+    "Title": "head of sales enablement",
+    "Country": "United Kingdom",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "https://www.linkedin.com/in/georginabeard",
+    "Company size": "Empty",
+    "Domain": "seon.io"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "Israel",
+    "Industry": "computer & network security",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/kasha",
+    "Company size": "51-200",
+    "Domain": "seraphicsecurity.com"
+  },
+  {
+    "Title": "CSO",
+    "Country": "Slovakia",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/peterchochol",
+    "Company size": "51-200",
+    "Domain": "sfera.sk"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/mmaggio",
+    "Company size": "501-1000",
+    "Domain": "showpad.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/devinschiller",
+    "Company size": "201-500",
+    "Domain": "sierra.ai"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "financial services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/jeremybickler",
+    "Company size": "501-1000",
+    "Domain": "simplicitygroup.com"
+  },
+  {
+    "Title": "senior revenue operations manager",
+    "Country": "Brazil",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/rafael-zanotelli-532406154",
+    "Company size": "201-500",
+    "Domain": "singular.net"
+  },
+  {
+    "Title": "revenue enablement",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/griffin-fogarty-00abba122",
+    "Company size": "501-1000",
+    "Domain": "skai.io"
+  },
+  {
+    "Title": "sales enablement",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/alexclaesson",
+    "Company size": "5001-10000",
+    "Domain": "snowflake.com"
+  },
+  {
+    "Title": "senior manager of sales enablement platform",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/nickthulin",
+    "Company size": "5001-10000",
+    "Domain": "snowflake.com"
+  },
+  {
+    "Title": "head of learning and development",
+    "Country": "United Kingdom",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "soldo.com"
+  },
+  {
+    "Title": "manager of administration",
+    "Country": "Canada",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/andressa-frugoli-828229209",
+    "Company size": "501-1000",
+    "Domain": "sothebysrealty.ca"
+  },
+  {
+    "Title": "sales and onboarding specialist",
+    "Country": "United States",
+    "Industry": "real estate",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/davidpitassi",
+    "Company size": "51-200",
+    "Domain": "spectora.com"
+  },
+  {
+    "Title": "head of revenue enablement",
+    "Country": "Poland",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/anna-maria-stawi\u0144ska",
+    "Company size": "51-200",
+    "Domain": "splitmetrics.com"
+  },
+  {
+    "Title": "head and director of development",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/gfaugerolas",
+    "Company size": "51-200",
+    "Domain": "stage32.com"
+  },
+  {
+    "Title": "director of sales",
+    "Country": "India",
+    "Industry": "hospitality",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/ruchitkapadia",
+    "Company size": "51-200",
+    "Domain": "stayflexi.com"
+  },
+  {
+    "Title": "CSO",
+    "Country": "Italy",
+    "Industry": "machinery",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/federico-fumagalli1",
+    "Company size": "201-500",
+    "Domain": "steriline.it"
+  },
+  {
+    "Title": "senior director of sales",
+    "Country": "United States",
+    "Industry": "marketing & advertising",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/bernice-lopez-smith",
+    "Company size": "51-200",
+    "Domain": "stirista.com"
+  },
+  {
+    "Title": "director of sales and support training",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Not now",
+    "LinkedIn": "https://www.linkedin.com/in/amanda-mcroberts-79406b2",
+    "Company size": "Empty",
+    "Domain": "storable.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "strata.io"
+  },
+  {
+    "Title": "director of sales enablement",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/jendoane",
+    "Company size": "Empty",
+    "Domain": "sumologic.com"
+  },
+  {
+    "Title": "senior sales enablement manager",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Forwarded",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "sumologic.com"
+  },
+  {
+    "Title": "field sales trainer",
+    "Country": "France",
+    "Industry": "financial services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/darina-senhaji",
+    "Company size": "1001-5000",
+    "Domain": "sumup.com"
+  },
+  {
+    "Title": "chief sales officer",
+    "Country": "France",
+    "Industry": "financial services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/kevin-meert-99522b48",
+    "Company size": "201-500",
+    "Domain": "sundayapp.com"
+  },
+  {
+    "Title": "VP of sales and partnerships",
+    "Country": "USA",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/sunny-rachel-fox",
+    "Company size": "Empty",
+    "Domain": "sunnydayfund.com"
+  },
+  {
+    "Title": "lead of revenue enablement",
+    "Country": "Finland",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/henri-veijola",
+    "Company size": "201-500",
+    "Domain": "supermetrics.com"
+  },
+  {
+    "Title": "sales enablement manager",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/calltop",
+    "Company size": "201-500",
+    "Domain": "supermetrics.com"
+  },
+  {
+    "Title": "head of business affairs",
+    "Country": "Sweden",
+    "Industry": "paper & forest products",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/rickard-sandstr\u00f6m-b8a24082",
+    "Company size": "501-1000",
+    "Domain": "sveaskog.se"
+  },
+  {
+    "Title": "sales enablement manager",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "taulia.com"
+  },
+  {
+    "Title": "SVP of sales",
+    "Country": "Ireland",
+    "Industry": "financial services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/\u00e9anna-brady-11972913",
+    "Company size": "201-500",
+    "Domain": "taxbackinternational.com"
+  },
+  {
+    "Title": "director of sales",
+    "Country": "UK",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/adelesmall",
+    "Company size": "Empty",
+    "Domain": "teacheroo.io"
+  },
+  {
+    "Title": "chief sales officer",
+    "Country": "Spain",
+    "Industry": "marketing & advertising",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/samuelsanzllanos",
+    "Company size": "1001-5000",
+    "Domain": "teads.com"
+  },
+  {
+    "Title": "director of sales enablement",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/chelsey-greenberg-11074784",
+    "Company size": "1001-5000",
+    "Domain": "tegus.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "Software Development",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "telaeris.com"
+  },
+  {
+    "Title": "VP of marketing and sales enablement",
+    "Country": "United States",
+    "Industry": "telecommunications",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/hannahkennedy-",
+    "Company size": "11-50",
+    "Domain": "telcloud.com"
+  },
+  {
+    "Title": "head of sales",
+    "Country": "Australia",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/freddiefenton",
+    "Company size": "Empty",
+    "Domain": "tendl.ai"
+  },
+  {
+    "Title": "manager of revenue operations and strategy",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/mattgarc",
+    "Company size": "201-500",
+    "Domain": "tennr.com"
+  },
+  {
+    "Title": "chief sales and service officer",
+    "Country": "Latvia",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/dace-lodzina-2098a98",
+    "Company size": "1001-5000",
+    "Domain": "tet.lv"
+  },
+  {
+    "Title": "senior manager of gtm enablement",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/arianarubio805",
+    "Company size": "51-200",
+    "Domain": "thetalake.com"
+  },
+  {
+    "Title": "head of sales",
+    "Country": "USA",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/wesley-gerard-ozer-65162b189",
+    "Company size": "Empty",
+    "Domain": "toothio.com"
+  },
+  {
+    "Title": "revenue operations specialist",
+    "Country": "United Kingdom",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/rebecca-rea-6417a780",
+    "Company size": "51-200",
+    "Domain": "tradifyhq.com"
+  },
+  {
+    "Title": "director of sales enablement",
+    "Country": "United Kingdom",
+    "Industry": "",
+    "InboxCategory": "Forwarded",
+    "LinkedIn": "http://www.linkedin.com/in/louisefmccarthy",
+    "Company size": "201-500",
+    "Domain": "triplelift.com"
+  },
+  {
+    "Title": "head of sales",
+    "Country": "USA",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/ericweeden/",
+    "Company size": "Empty",
+    "Domain": "truelark.com"
+  },
+  {
+    "Title": "VP of revenue operations",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/jonathanbarger",
+    "Company size": "201-500",
+    "Domain": "trustarc.com"
+  },
+  {
+    "Title": "director of enterprise sales",
+    "Country": "USA",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/john-raposo",
+    "Company size": "Empty",
+    "Domain": "ushur.ai"
+  },
+  {
+    "Title": "director of sales development",
+    "Country": "USA",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/anthony-mcintire-319548141/",
+    "Company size": "Empty",
+    "Domain": "versemedical.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/jared-greenberg-71351135",
+    "Company size": "201-500",
+    "Domain": "vertice.one"
+  },
+  {
+    "Title": "director of sales enablement",
+    "Country": "",
+    "Industry": "",
+    "InboxCategory": "Interested, Meeting intent",
+    "LinkedIn": "https://www.linkedin.com/in/ACwAAAOiH0UBUa-4EAJQyfgXQzHJq1KsoRDfaPg",
+    "Company size": "Empty",
+    "Domain": "vwo.com"
+  },
+  {
+    "Title": "CFO and sales",
+    "Country": "United States",
+    "Industry": "farming",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/andrew-seger-224a1b175",
+    "Company size": "51-200",
+    "Domain": "wabashvalleyproduce.com"
+  },
+  {
+    "Title": "head of revenue enablement",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "https://www.linkedin.com/in/drgregoryanderson",
+    "Company size": "Empty",
+    "Domain": "walkme.com"
+  },
+  {
+    "Title": "SVP of sales and gtm enablement",
+    "Country": "United States",
+    "Industry": "government administration",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/rebeccaleddick",
+    "Company size": "501-1000",
+    "Domain": "watermarkinsights.com"
+  },
+  {
+    "Title": "chief sales officer",
+    "Country": "United Kingdom",
+    "Industry": "",
+    "InboxCategory": "Interested",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "wearepion.com"
+  },
+  {
+    "Title": "senior director and chief of staff",
+    "Country": "United States",
+    "Industry": "Wellness and Fitness Services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "https://www.linkedin.com/in/sandi-eskew-bab9a114",
+    "Company size": "51-200",
+    "Domain": "wellright.com"
+  },
+  {
+    "Title": "founder",
+    "Country": "Czech Republic",
+    "Industry": "computer & network security",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/radekstencl",
+    "Company size": "51-200",
+    "Domain": "whalebone.io"
+  },
+  {
+    "Title": "senior manager of sales enablement",
+    "Country": "United States",
+    "Industry": "Financial Services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/calvin-bohn-b9b3247",
+    "Company size": "201-500",
+    "Domain": "withcherry.com"
+  },
+  {
+    "Title": "director of sales",
+    "Country": "USA",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/mary-meister",
+    "Company size": "Empty",
+    "Domain": "withme.com"
+  },
+  {
+    "Title": "founder and CEO",
+    "Country": "Canada",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/raghavmidha",
+    "Company size": "Empty",
+    "Domain": "withterminal.com"
+  },
+  {
+    "Title": "VP of revenue operations",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/ali-zafer-519a237",
+    "Company size": "51-200",
+    "Domain": "witness.ai"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "United States",
+    "Industry": "information technology & services",
+    "InboxCategory": "Not interested",
+    "LinkedIn": "http://www.linkedin.com/in/mattmatergia",
+    "Company size": "1001-5000",
+    "Domain": "wix.com"
+  },
+  {
+    "Title": "director of revenue operations",
+    "Country": "United Kingdom",
+    "Industry": "information technology & services",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/natalie-campbell-629712114",
+    "Company size": "501-1000",
+    "Domain": "wunderkind.co"
+  },
+  {
+    "Title": "sales enablement lead",
+    "Country": "Chile",
+    "Industry": "financial services",
+    "InboxCategory": "Interested, Meeting intent",
+    "LinkedIn": "http://www.linkedin.com/in/vicenteecheverria",
+    "Company size": "501-1000",
+    "Domain": "xepelin.com"
+  },
+  {
+    "Title": "VP of sales",
+    "Country": "Israel",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/guy-ofek",
+    "Company size": "201-500",
+    "Domain": "yaelgroup.com"
+  },
+  {
+    "Title": "director of enterprise sales",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Interested",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "yext.com"
+  },
+  {
+    "Title": "SVP of sales",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Forwarded",
+    "LinkedIn": "",
+    "Company size": "Empty",
+    "Domain": "yext.com"
+  },
+  {
+    "Title": "director of sales enablement",
+    "Country": "United States",
+    "Industry": "",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "https://www.linkedin.com/in/richardweymer",
+    "Company size": "201-500",
+    "Domain": "yubico.com"
+  },
+  {
+    "Title": "senior revenue operations",
+    "Country": "Chile",
+    "Industry": "entertainment",
+    "InboxCategory": "Do not contact",
+    "LinkedIn": "http://www.linkedin.com/in/pmahuzieru",
+    "Company size": "51-200",
+    "Domain": "zapping.com"
+  }
+];
+  const titleGroups = [
+    {name:'Sales leadership', keywords:['chief sales officer','cso','vp of sales','vice president of sales','svp of sales','director of sales','head of sales','sales leader','sales leadership','sales director']},
+    {name:'Sales enablement', keywords:['sales enablement','enablement manager','head of sales enablement','director of sales enablement','sales enablement lead','sales enablement specialist','sales enablement officer']},
+    {name:'Revenue enablement', keywords:['revenue enablement','revenue operations','revops','revenue operations lead','revenue operations manager','revenue operations director']},
+    {name:'Learning & Development', keywords:['learning and development','learning & development','l&d','talent development','training manager','training director','learning manager','learning specialist','development manager']},
+    {name:'Sales & Growth', keywords:['revenue','account executive','business development','bdm','partner','growth','go-to-market','gtm','deal']},
+    {name:'Marketing', keywords:['marketing','demand','brand','content','creative','communications','digital','campaign']},
+    {name:'Executive', keywords:['ceo','chief','founder','owner','president','cxo','head of','chair']},
+    {name:'Product & Design', keywords:['product','designer','design','ux','ui','experience','product manager','pm']},
+    {name:'Technology', keywords:['engineer','developer','technology','it ','software','cloud','tech lead','cto','data scientist','solutions architect','devops','architect','systems']},
+    {name:'Operations', keywords:['operations','ops','strategy','program manager','project manager','office manager','logistics','procurement','supply']},
+    {name:'Customer & Support', keywords:['customer','support','success','experience','service','client']},
+    {name:'Finance & Legal', keywords:['finance','financial','accountant','legal','cfo','compliance','tax','audit','controller','contract']},
+    {name:'People & HR', keywords:['hr','talent','recruit','people','culture','staffing']},
+  ];
+  function categorizeTitle(title) {
+    const normalized = (title||'').toLowerCase();
+    for (const group of titleGroups) {
+      if (group.keywords.some(k => normalized.includes(k))) return group.name;
+    }
+    return 'Other';
+  }
+  function summarize(items, key) {
+    return items.reduce((acc,item) => { const value = item[key] || 'Unknown'; acc[value] = (acc[value]||0)+1; return acc; }, {});
+  }
+  function topEntries(obj, limit=8) {
+    return Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,limit);
+  }
+  function updateSummary(records) {
+    document.getElementById('totalRecords').textContent = records.length;
+    document.getElementById('uniqueCountries').textContent = new Set(records.map(r=>r.Country?.trim()).filter(Boolean)).size;
+    document.getElementById('uniqueIndustries').textContent = new Set(records.map(r=>r.Industry?.trim()).filter(Boolean)).size;
+    document.getElementById('uniqueDomains').textContent = new Set(records.map(r=>r.Domain?.trim()).filter(Boolean)).size;
+  }
+  function buildOptions(select, values) {
+    values.sort((a,b)=>a.localeCompare(b)); values.forEach(value=>{ const option=document.createElement('option'); option.value=value; option.textContent=value; select.appendChild(option); });
+  }
+  function renderTable(records) {
+    const tbody=document.getElementById('dataTable'); tbody.innerHTML='';
+    records.forEach(row=>{
+      const tr=document.createElement('tr');
+      const group=categorizeTitle(row.Title || 'Unknown');
+      const linkHtml=row.LinkedIn ? `<a class='inline-link' href='${row.LinkedIn}' target='_blank' rel='noreferrer'>view</a>` : '—';
+      tr.innerHTML=`<td>${row.Title||'—'}</td><td>${group}</td><td>${row.Industry||'—'}</td><td>${row['Company size']||'—'}</td><td>${row.Country||'—'}</td><td>${row.InboxCategory||'—'}</td><td>${row.Domain||'—'}</td><td>${linkHtml}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+  function updateBadge() {
+    const parts=[];
+    ['countryFilter','industryFilter','inboxFilter','jobFilter'].forEach(id=>{
+      const value=document.getElementById(id).value;
+      if (value!=='all') parts.push(value);
+    });
+    if (selectedSize !== 'all') parts.push(`Size: ${selectedSize}`);
+    if (selectedJobCategory !== 'all') parts.push(`Job: ${selectedJobCategory}`);
+    document.getElementById('activeFilterBadge').textContent = parts.length ? parts.join(' · ') : 'All data';
+  }
+  let selectedSize = 'all';
+  let selectedJobCategory = 'all';
+  function renderJobCategoryButtons(jobCounts) {
+    const order=['Sales leadership','Sales enablement','Revenue enablement','Learning & Development','Sales & Growth','Marketing','Executive','Product & Design','Technology','Operations','Customer & Support','Finance & Legal','People & HR','Other'];
+    const container=document.getElementById('jobCategoryDetails');
+    container.innerHTML='';
+    const ordered = order.map(key => [key, jobCounts[key] || 0]).concat(Object.entries(jobCounts).filter(([key]) => !order.includes(key)).sort((a,b)=>a[0].localeCompare(b[0])));
+    ordered.forEach(([category,count])=>{
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='filter-button'+(selectedJobCategory===category ? ' active' : '');
+      btn.textContent=`${category}: ${count}`;
+      btn.addEventListener('click', ()=>{
+        selectedJobCategory = selectedJobCategory===category ? 'all' : category;
+        document.querySelectorAll('#jobCategoryDetails .filter-button').forEach(el=>el.classList.toggle('active', el===btn && selectedJobCategory===category));
+        document.getElementById('jobFilter').value = selectedJobCategory;
+        const filtered=filterRecords();
+        updateSummary(filtered);
+        renderTable(filtered);
+        plotCharts(filtered);
+        updateBadge();
+      });
+      container.appendChild(btn);
+    });
+  }
+  function renderSizeButtons(sizeCounts) {
+    const order=['2-10','11-50','51-200','201-500','501-1000','1001-5000','5001-10000'];
+    const container=document.getElementById('sizeCategoryButtons');
+    container.innerHTML='';
+    const ordered = order.map(key => [key, sizeCounts[key] || 0]).concat(Object.entries(sizeCounts).filter(([key]) => !order.includes(key)).sort((a,b)=>a[0].localeCompare(b[0])));
+    ordered.forEach(([size,count])=>{
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='filter-button'+(selectedSize===size ? ' active' : '');
+      btn.textContent=`${size}: ${count}`;
+      btn.addEventListener('click', ()=>{
+        selectedSize = selectedSize===size ? 'all' : size;
+        document.querySelectorAll('#sizeCategoryButtons .filter-button').forEach(el=>el.classList.toggle('active', el===btn && selectedSize===size));
+        const filtered = filterRecords();
+        updateSummary(filtered);
+        renderTable(filtered);
+        plotCharts(filtered);
+        updateBadge();
+      });
+      container.appendChild(btn);
+    });
+  }
+  function orderSizeData(counts) {
+    const order=['2-10','11-50','51-200','201-500','501-1000','1001-5000','5001-10000'];
+    const ordered = order.map(key => [key, counts[key] || 0]);
+    const extra = Object.entries(counts).filter(([key]) => !order.includes(key)).sort((a,b)=>a[0].localeCompare(b[0]));
+    return ordered.concat(extra);
+  }
+  function plotCharts(records) {
+    const catCounts=summarize(records,'InboxCategory');
+    const sizeCounts=summarize(records,'Company size');
+    const industryCounts=summarize(records,'Industry');
+    const countryCounts=summarize(records,'Country');
+    const jobCounts=records.reduce((acc,row)=>{ const group=categorizeTitle(row.Title||'Unknown'); acc[group]=(acc[group]||0)+1; return acc; },{});
+    const chartConfig=[
+      {id:'catChart', data:topEntries(catCounts,6), type:'doughnut'},
+      {id:'sizeChart', data:orderSizeData(sizeCounts), type:'bar', horizontal:true},
+      {id:'industryChart', data:topEntries(industryCounts,8), type:'bar'},
+      {id:'countryChart', data:topEntries(countryCounts,8), type:'bar'},
+      {id:'jobChart', data:topEntries(jobCounts,8), type:'bar', horizontal:true}
+    ];
+    const categoryColorMap = {
+      'Do not contact':'#dc2626',
+      'Not interested':'#f97316',
+      'Interested':'#16a34a',
+      'Interested, Meeting intent':'#0ea5e9',
+      'Forwarded':'#facc15',
+      'Not now':'#6366f1',
+      'Other':'#94a3b8',
+      'Unknown':'#94a3b8'
+    };
+    const palette=['#1d4ed8','#2563eb','#0ea5e9','#0f766e','#16a34a','#ca8a04','#7c3aed','#334155'];
+    const wrapLabel = (value) => {
+      if (typeof value !== 'string' || value.length <= 24) return value;
+      return value.match(/.{1,24}(?:\s|$)/g).map(s => s.trim());
+    };
+    Chart.register(ChartDataLabels);
+    chartConfig.forEach(conf=>{
+      const ctx=document.getElementById(conf.id).getContext('2d');
+      if (ctx.chart) ctx.chart.destroy();
+      const labels=conf.data.map(([label])=>label);
+      const values=conf.data.map(([_,value])=>value);
+      const bg=labels.map(label => conf.id==='catChart' ? (categoryColorMap[label]||'#cbd5e1') : palette[labels.indexOf(label)%palette.length]);
+      const isBar = conf.type === 'bar';
+      const horizontal = !!conf.horizontal;
+      const xTitle = conf.type==='doughnut' ? null : horizontal ? 'Count' : (conf.id==='sizeChart' ? 'Company size' : 'Category');
+      const yTitle = conf.type==='doughnut' ? null : horizontal ? (conf.id==='sizeChart' ? 'Company size' : 'Category') : 'Count';
+      ctx.chart=new Chart(ctx,{ type:conf.type, data:{ labels, datasets:[Object.assign({ label:conf.id, data:values, backgroundColor:bg, borderColor:bg, borderWidth:0, borderRadius:6, borderSkipped:false }, isBar ? { barThickness: 24, maxBarThickness: 38 } : {})] }, options:{ animation:false, plugins:{ legend:{ display: conf.type==='doughnut', position:'bottom' }, tooltip:{ mode:'nearest', intersect:false, backgroundColor:'#0f172a', titleColor:'#ffffff', bodyColor:'#ffffff' }, datalabels:{ color:'#0f172a', anchor: (context) => context.chart.config.type==='doughnut' ? 'center' : 'end', align: (context) => context.chart.config.type==='doughnut' ? 'center' : 'end', formatter: (value, context) => value, font:{ weight:'600', size:11 }, padding:4, display:true } }, responsive:true, maintainAspectRatio:false, indexAxis: horizontal ? 'y' : 'x', scales: conf.type==='doughnut' ? {} : { x:{ title:{ display: !!xTitle, text:xTitle, color:'#475569', font:{ weight:'600' } }, ticks:{ color:'#475569', maxRotation:0, minRotation:0 }, grid:{ color:'rgba(148,163,184,0.08)' }, beginAtZero:true }, y:{ title:{ display: !!yTitle, text:yTitle, color:'#475569', font:{ weight:'600' } }, beginAtZero:true, ticks:{ color:'#475569', callback: wrapLabel, maxRotation:0, minRotation:0 }, grid:{ color:'rgba(148,163,184,0.08)' } } } } });
+    });
+    renderSizeButtons(sizeCounts);
+    renderJobCategoryButtons(jobCounts);
+  }
+  function filterRecords() {
+    let filtered=rawData;
+    const country=document.getElementById('countryFilter').value;
+    const industry=document.getElementById('industryFilter').value;
+    const inbox=document.getElementById('inboxFilter').value;
+    const job=document.getElementById('jobFilter').value;
+    if (country!=='all') filtered=filtered.filter(r=>r.Country===country);
+    if (industry!=='all') filtered=filtered.filter(r=>r.Industry===industry);
+    if (inbox!=='all') filtered=filtered.filter(r=>r.InboxCategory===inbox);
+    if (job!=='all') filtered=filtered.filter(r=>categorizeTitle(r.Title||'Unknown')===job);
+    if (selectedSize !== 'all') filtered = filtered.filter(r => (r['Company size']||'') === selectedSize);
+    if (selectedJobCategory !== 'all') filtered = filtered.filter(r=>categorizeTitle(r.Title||'Unknown')===selectedJobCategory);
+    return filtered;
+  }
+  function init() {
+    buildOptions(document.getElementById('countryFilter'), [...new Set(rawData.map(r=>r.Country?.trim()).filter(Boolean))]);
+    buildOptions(document.getElementById('industryFilter'), [...new Set(rawData.map(r=>r.Industry?.trim()).filter(Boolean))]);
+    buildOptions(document.getElementById('inboxFilter'), [...new Set(rawData.map(r=>r.InboxCategory?.trim()).filter(Boolean))]);
+    buildOptions(document.getElementById('jobFilter'), [...new Set(rawData.map(r=>categorizeTitle(r.Title||'Unknown')))]);
+    ['countryFilter','industryFilter','inboxFilter','jobFilter'].forEach(id => document.getElementById(id).addEventListener('change', ()=>{ const filtered=filterRecords(); updateSummary(filtered); renderTable(filtered); plotCharts(filtered); updateBadge(); }));
+    updateSummary(rawData);
+    renderTable(rawData);
+    plotCharts(rawData);
+    updateBadge();
+  }
+  init();
+  </script>
+</body>
+</html>
